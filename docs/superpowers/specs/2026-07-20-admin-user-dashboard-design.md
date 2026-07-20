@@ -117,3 +117,43 @@ existing design system:
 - Manual: confirm empty-state renders correctly on a fresh/empty
   `profiles` table (e.g. in a scratch Supabase project, or by reasoning
   about the empty-array code path).
+
+## Amendment: duplicate-signup error message
+
+`src/routes/apply.tsx` currently mishandles re-signup with an already
+registered email. When Supabase's anti-enumeration protection is active,
+`supabase.auth.signUp()` can return no error and no session for an
+existing email, so the code falls into its "email confirmation required"
+fallback (`signInWithPassword` with the newly typed password), which then
+fails with a confusing "Invalid login credentials" message instead of
+telling the user the account already exists.
+
+Fix: after a successful (no-error) `signUp` call with no session, check
+`data.user?.identities`. An empty array (`identities.length === 0`) is
+Supabase's signal that the email is already registered. In that case, skip
+the sign-in fallback and show: "An account with this email already
+exists — please sign in instead." Only attempt the sign-in fallback when
+`identities` is non-empty (the genuine "needs email confirmation" case).
+
+## Amendment: seed admin account
+
+A one-time, manually-run script `scripts/seed-admin.ts` creates the first
+admin account, so there's no need to hand-write raw SQL against
+`auth.users` (Supabase passwords require hashing that only the auth admin
+API performs correctly).
+
+- Uses the service-role client (`client.server.ts`'s admin client, or an
+  equivalent one-off client built from `SUPABASE_SERVICE_ROLE_KEY`) and
+  calls `supabase.auth.admin.createUser({ email, password, email_confirm:
+  true, user_metadata: { username } })`.
+- Credentials: email `admin@gmail.com`, password `admin@123`, username
+  `admin`.
+- After creation, updates that user's `public.profiles.role` to
+  `'admin'` (the profile row itself is created by the existing signup
+  trigger, same as any other signup).
+- Run manually once (`SUPABASE_SERVICE_ROLE_KEY=... npx tsx
+  scripts/seed-admin.ts` or similar) — not part of the automatic
+  migrations, since it creates a real credential rather than schema.
+- **Security note**: `admin@123` is a weak, guessable password. Flagged
+  to the user; recommended to change it after first login. Proceeding
+  with these exact credentials per explicit user request.
