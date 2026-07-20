@@ -36,7 +36,15 @@ function ApplyPage() {
             emailRedirectTo: `${window.location.origin}/portal`,
           },
         });
-        if (error) throw error;
+        if (error) {
+          // With email confirmation disabled, Supabase rejects a duplicate
+          // signup with this error directly rather than the silent
+          // empty-identities signal used when confirmation is required.
+          if (error.message.toLowerCase().includes("already registered")) {
+            throw new Error("An account with this email already exists — please sign in instead.");
+          }
+          throw error;
+        }
         if (!data.session) {
           // Supabase's anti-enumeration behavior returns no error and no
           // session for an email that's already registered — an empty
