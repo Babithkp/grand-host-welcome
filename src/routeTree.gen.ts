@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as OurCareRouteImport } from './routes/our-care'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApplyRoute = ApplyRouteImport.update({
@@ -50,6 +56,7 @@ const PortalRoute = PortalRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/apply': typeof ApplyRoute
   '/careers': typeof CareersRoute
   '/our-care': typeof OurCareRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/apply': typeof ApplyRoute
   '/careers': typeof CareersRoute
   '/our-care': typeof OurCareRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/apply': typeof ApplyRoute
   '/careers': typeof CareersRoute
   '/our-care': typeof OurCareRoute
@@ -74,13 +83,16 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/apply' | '/careers' | '/our-care' | '/portal'
+  fullPaths:
+    '/' | '/about' | '/admin' | '/apply' | '/careers' | '/our-care' | '/portal'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/apply' | '/careers' | '/our-care' | '/portal'
+  to:
+    '/' | '/about' | '/admin' | '/apply' | '/careers' | '/our-care' | '/portal'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/admin'
     | '/apply'
     | '/careers'
     | '/our-care'
@@ -90,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRoute
   ApplyRoute: typeof ApplyRoute
   CareersRoute: typeof CareersRoute
   OurCareRoute: typeof OurCareRoute
@@ -110,6 +123,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apply': {
@@ -146,6 +166,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdminRoute: AdminRoute,
   ApplyRoute: ApplyRoute,
   CareersRoute: CareersRoute,
   OurCareRoute: OurCareRoute,
