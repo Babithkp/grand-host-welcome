@@ -38,7 +38,13 @@ function ApplyPage() {
         });
         if (error) throw error;
         if (!data.session) {
-          // email confirmation required — try immediate sign-in
+          // Supabase's anti-enumeration behavior returns no error and no
+          // session for an email that's already registered — an empty
+          // identities array is how it signals that case.
+          if (data.user && data.user.identities && data.user.identities.length === 0) {
+            throw new Error("An account with this email already exists — please sign in instead.");
+          }
+          // otherwise: email confirmation is required — try immediate sign-in
           const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
           if (sErr) throw sErr;
         }
