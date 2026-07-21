@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { signupFn, loginFn } from "@/server-functions/auth";
 import { Header } from "@/components/Header";
 
 export const Route = createFileRoute("/apply")({
@@ -28,37 +28,9 @@ function ApplyPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { username },
-            emailRedirectTo: `${window.location.origin}/portal`,
-          },
-        });
-        if (error) {
-          // With email confirmation disabled, Supabase rejects a duplicate
-          // signup with this error directly rather than the silent
-          // empty-identities signal used when confirmation is required.
-          if (error.message.toLowerCase().includes("already registered")) {
-            throw new Error("An account with this email already exists — please sign in instead.");
-          }
-          throw error;
-        }
-        if (!data.session) {
-          // Supabase's anti-enumeration behavior returns no error and no
-          // session for an email that's already registered — an empty
-          // identities array is how it signals that case.
-          if (data.user && data.user.identities && data.user.identities.length === 0) {
-            throw new Error("An account with this email already exists — please sign in instead.");
-          }
-          // otherwise: email confirmation is required — try immediate sign-in
-          const { error: sErr } = await supabase.auth.signInWithPassword({ email, password });
-          if (sErr) throw sErr;
-        }
+        await signupFn({ data: { email, username, password } });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        await loginFn({ data: { email, password } });
       }
       navigate({ to: "/portal" });
     } catch (e: any) {
