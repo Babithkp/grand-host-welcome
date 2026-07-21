@@ -111,6 +111,7 @@ function PortalPage() {
       return;
     }
     setUploading(true);
+    const failures: string[] = [];
     for (const file of Array.from(e.target.files)) {
       try {
         const { uploadUrl, key } = await requestUploadFn({
@@ -129,8 +130,11 @@ function PortalPage() {
           data: { key, file_name: file.name, file_size: file.size },
         });
       } catch (err: any) {
-        setUploadErr(err?.message ?? "Upload failed.");
+        failures.push(`${file.name}: ${err?.message ?? "Upload failed"}`);
       }
+    }
+    if (failures.length > 0) {
+      setUploadErr(failures.join("; "));
     }
     await loadDocs();
     setUploading(false);
@@ -138,8 +142,13 @@ function PortalPage() {
   }
 
   async function deleteDoc(d: DocRow) {
-    await deleteDocumentFn({ data: { id: d.id } });
-    await loadDocs();
+    setUploadErr(null);
+    try {
+      await deleteDocumentFn({ data: { id: d.id } });
+      await loadDocs();
+    } catch (err: any) {
+      setUploadErr(err?.message ?? "Failed to delete document.");
+    }
   }
 
   async function submitApplication() {
