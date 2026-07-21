@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { X, Upload, FileText, Trash2, LogOut, CheckCircle, Clock } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
+import { getSessionFn, logoutFn } from "@/server-functions/auth";
+import { getApplicationFn, saveApplicationFn } from "@/server-functions/application";
+import {
+  listDocumentsFn,
+  requestUploadFn,
+  confirmUploadFn,
+  deleteDocumentFn,
+} from "@/server-functions/documents";
 
 export const Route = createFileRoute("/portal")({
   head: () => ({
@@ -15,7 +22,7 @@ export const Route = createFileRoute("/portal")({
   component: PortalPage,
 });
 
-type DocRow = { id: string; file_name: string; file_path: string; file_size: number | null; created_at: string };
+type DocRow = { id: string; file_name: string; file_size: number | null; created_at: string };
 
 const positions = [
   "Palliative Care Assistant",
@@ -27,7 +34,6 @@ const positions = [
 function PortalPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string>("");
 
   const [form, setForm] = useState({
@@ -51,20 +57,14 @@ function PortalPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+      const session = await getSessionFn();
+      if (!session) {
         navigate({ to: "/apply" });
         return;
       }
-      const uid = data.session.user.id;
-      setUserId(uid);
+      setUsername(session.username || session.email);
 
-      const { data: profile } = await supabase
-        .from("profiles").select("username").eq("id", uid).maybeSingle();
-      setUsername(profile?.username ?? data.session.user.email ?? "");
-
-      const { data: app } = await supabase
-        .from("applications").select("*").eq("user_id", uid).maybeSingle();
+      const app = await getApplicationFn();
       if (app) {
         setForm({
           first_name: app.first_name ?? "",
@@ -77,35 +77,34 @@ function PortalPage() {
         });
         setSubmitted(!!app.submitted);
       }
-      await loadDocs(uid);
+      await loadDocs();
       setReady(true);
     })();
   }, [navigate]);
 
-  async function loadDocs(uid: string) {
-    const { data } = await supabase
-      .from("application_documents")
-      .select("*")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false });
-    setDocs((data as DocRow[]) ?? []);
+  async function loadDocs() {
+    const rows = await listDocumentsFn();
+    setDocs(rows);
   }
 
   async function saveForm(e: React.FormEvent) {
     e.preventDefault();
-    if (!userId) return;
     setSaving(true);
     setSaveMsg(null);
-    const payload = { user_id: userId, ...form, date_of_birth: form.date_of_birth || null };
-    const { error } = await supabase
-      .from("applications")
-      .upsert(payload, { onConflict: "user_id" });
-    setSaving(false);
-    setSaveMsg(error ? `Error: ${error.message}` : "Saved.");
+    try {
+      await saveApplicationFn({
+        data: { ...form, date_of_birth: form.date_of_birth || null },
+      });
+      setSaveMsg("Saved.");
+    } catch (err: any) {
+      setSaveMsg(`Error: ${err?.message ?? "Something went wrong"}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!userId || !e.target.files?.length) return;
+    if (!e.target.files?.length) return;
     setUploadErr(null);
     if (docs.length + e.target.files.length > 10) {
       setUploadErr("You can upload a maximum of 10 documents.");
@@ -113,52 +112,55 @@ function PortalPage() {
     }
     setUploading(true);
     for (const file of Array.from(e.target.files)) {
-      const path = `${userId}/${Date.now()}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from("application-documents")
-        .upload(path, file);
-      if (upErr) { setUploadErr(upErr.message); continue; }
-      await supabase.from("application_documents").insert({
-        user_id: userId,
-        file_name: file.name,
-        file_path: path,
-        file_size: file.size,
-      });
+      try {
+        const { uploadUrl, key } = await requestUploadFn({
+          data: {
+            file_name: file.name,
+            content_type: file.type || "application/octet-stream",
+          },
+        });
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!putRes.ok) throw new Error("Upload to storage failed.");
+        await confirmUploadFn({
+          data: { key, file_name: file.name, file_size: file.size },
+        });
+      } catch (err: any) {
+        setUploadErr(err?.message ?? "Upload failed.");
+      }
     }
-    await loadDocs(userId);
+    await loadDocs();
     setUploading(false);
     e.target.value = "";
   }
 
   async function deleteDoc(d: DocRow) {
-    await supabase.storage.from("application-documents").remove([d.file_path]);
-    await supabase.from("application_documents").delete().eq("id", d.id);
-    if (userId) await loadDocs(userId);
+    await deleteDocumentFn({ data: { id: d.id } });
+    await loadDocs();
   }
 
   async function submitApplication() {
-    if (!userId) return;
     setSubmitMsg(null);
     if (docs.length === 0) {
       setSubmitMsg("Please upload at least one document before submitting.");
       return;
     }
-    const { error } = await supabase
-      .from("applications")
-      .upsert(
-        { user_id: userId, ...form, date_of_birth: form.date_of_birth || null, submitted: true, submitted_at: new Date().toISOString() },
-        { onConflict: "user_id" }
-      );
-    if (error) {
-      setSubmitMsg(`Error: ${error.message}`);
-    } else {
+    try {
+      await saveApplicationFn({
+        data: { ...form, date_of_birth: form.date_of_birth || null, submit: true },
+      });
       setSubmitted(true);
       setShowUpload(false);
+    } catch (err: any) {
+      setSubmitMsg(`Error: ${err?.message ?? "Something went wrong"}`);
     }
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await logoutFn();
     navigate({ to: "/" });
   }
 
