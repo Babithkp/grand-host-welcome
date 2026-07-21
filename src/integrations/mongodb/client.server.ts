@@ -16,8 +16,9 @@ async function getDb(): Promise<Db> {
   }
   if (!_dbPromise) {
     _dbPromise = (async () => {
+      let client: MongoClient | undefined;
       try {
-        const client = new MongoClient(DATABASE_URL);
+        client = new MongoClient(DATABASE_URL);
         await client.connect();
         const db = client.db();
         await Promise.all([
@@ -33,6 +34,7 @@ async function getDb(): Promise<Db> {
         return db;
       } catch (err) {
         _dbPromise = undefined;
+        await client?.close().catch(() => {});
         throw err;
       }
     })();
