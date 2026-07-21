@@ -16,25 +16,25 @@ async function getDb(): Promise<Db> {
   }
   if (!_dbPromise) {
     _dbPromise = (async () => {
-      const client = new MongoClient(DATABASE_URL);
       try {
+        const client = new MongoClient(DATABASE_URL);
         await client.connect();
+        const db = client.db();
+        await Promise.all([
+          db.collection("users").createIndex({ email: 1 }, { unique: true }),
+          db
+            .collection("sessions")
+            .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+          db
+            .collection("applications")
+            .createIndex({ userId: 1 }, { unique: true }),
+          db.collection("application_documents").createIndex({ userId: 1 }),
+        ]);
+        return db;
       } catch (err) {
         _dbPromise = undefined;
         throw err;
       }
-      const db = client.db();
-      await Promise.all([
-        db.collection("users").createIndex({ email: 1 }, { unique: true }),
-        db
-          .collection("sessions")
-          .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-        db
-          .collection("applications")
-          .createIndex({ userId: 1 }, { unique: true }),
-        db.collection("application_documents").createIndex({ userId: 1 }),
-      ]);
-      return db;
     })();
   }
   return _dbPromise;
