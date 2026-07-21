@@ -54,6 +54,7 @@ function PortalPage() {
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [submitMsg, setSubmitMsg] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -76,6 +77,7 @@ function PortalPage() {
           position: app.position ?? positions[0],
         });
         setSubmitted(!!app.submitted);
+        setStatus(app.status ?? null);
       }
       await loadDocs();
       setReady(true);
@@ -162,6 +164,7 @@ function PortalPage() {
         data: { ...form, date_of_birth: form.date_of_birth || null, submit: true },
       });
       setSubmitted(true);
+      setStatus("pending");
       setShowUpload(false);
     } catch (err: any) {
       setSubmitMsg(`Error: ${err?.message ?? "Something went wrong"}`);
@@ -206,22 +209,44 @@ function PortalPage() {
         <section className="container-x mx-auto max-w-2xl py-16 text-center">
           <div className="rounded-2xl bg-white p-10 shadow-sm ring-1 ring-border md:p-14">
             <div className="flex justify-center">
-              <div className="grid h-20 w-20 place-items-center rounded-full bg-green-100">
-                <CheckCircle className="text-green-600" size={40} strokeWidth={2.5} />
+              <div
+                className={`grid h-20 w-20 place-items-center rounded-full ${
+                  status === "rejected" ? "bg-red-100" : "bg-green-100"
+                }`}
+              >
+                <CheckCircle
+                  className={status === "rejected" ? "text-red-600" : "text-green-600"}
+                  size={40}
+                  strokeWidth={2.5}
+                />
               </div>
             </div>
             <h2 className="mt-6 font-display text-3xl text-forest-deep md:text-4xl">
               Application submitted successfully
             </h2>
 
-            <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-gold/40 bg-gold/10 px-5 py-2.5 text-sm font-medium text-forest-deep">
-              <Clock className="text-gold" size={18} />
-              Application pending
-            </div>
+            {status === "approved" ? (
+              <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-green-300 bg-green-50 px-5 py-2.5 text-sm font-medium text-green-800">
+                <CheckCircle size={18} />
+                Application approved
+              </div>
+            ) : status === "rejected" ? (
+              <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-medium text-red-800">
+                Application not successful
+              </div>
+            ) : (
+              <div className="mt-8 inline-flex items-center gap-3 rounded-full border border-gold/40 bg-gold/10 px-5 py-2.5 text-sm font-medium text-forest-deep">
+                <Clock className="text-gold" size={18} />
+                Application pending
+              </div>
+            )}
 
             <p className="mt-8 text-muted-foreground">
-              When your documents has been accessed and verified, you will receive an email
-              notification regarding the status of your application.
+              {status === "approved"
+                ? "Congratulations — our team will be in touch about next steps."
+                : status === "rejected"
+                  ? "Thank you for your interest in Grand Host Care Home. We will not be proceeding with your application at this time."
+                  : "When your documents has been accessed and verified, you will receive an email notification regarding the status of your application."}
             </p>
           </div>
         </section>
