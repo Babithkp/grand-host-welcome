@@ -29,10 +29,11 @@ function ApplyPage() {
     try {
       if (mode === "signup") {
         await signupFn({ data: { email, username, password } });
+        navigate({ to: "/portal" });
       } else {
-        await loginFn({ data: { email, password } });
+        const result = await loginFn({ data: { email, password } });
+        navigate({ to: result.role === "admin" ? "/admin" : "/portal" });
       }
-      navigate({ to: "/portal" });
     } catch (e: any) {
       setErr(e?.message ?? "Something went wrong");
     } finally {
