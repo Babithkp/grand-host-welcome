@@ -8,33 +8,36 @@ import type {
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
-let _client: MongoClient | undefined;
-let _db: Db | undefined;
-let _indexesEnsured = false;
+let _dbPromise: Promise<Db> | undefined;
 
 async function getDb(): Promise<Db> {
   if (!DATABASE_URL) {
     throw new Error("Missing DATABASE_URL environment variable.");
   }
-  if (!_client) {
-    _client = new MongoClient(DATABASE_URL);
-    await _client.connect();
-    _db = _client.db();
+  if (!_dbPromise) {
+    _dbPromise = (async () => {
+      const client = new MongoClient(DATABASE_URL);
+      try {
+        await client.connect();
+      } catch (err) {
+        _dbPromise = undefined;
+        throw err;
+      }
+      const db = client.db();
+      await Promise.all([
+        db.collection("users").createIndex({ email: 1 }, { unique: true }),
+        db
+          .collection("sessions")
+          .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+        db
+          .collection("applications")
+          .createIndex({ userId: 1 }, { unique: true }),
+        db.collection("application_documents").createIndex({ userId: 1 }),
+      ]);
+      return db;
+    })();
   }
-  if (!_indexesEnsured) {
-    _indexesEnsured = true;
-    await Promise.all([
-      _db!.collection("users").createIndex({ email: 1 }, { unique: true }),
-      _db!
-        .collection("sessions")
-        .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-      _db!
-        .collection("applications")
-        .createIndex({ userId: 1 }, { unique: true }),
-      _db!.collection("application_documents").createIndex({ userId: 1 }),
-    ]);
-  }
-  return _db!;
+  return _dbPromise;
 }
 
 export async function getUsersCollection(): Promise<Collection<UserDoc>> {
