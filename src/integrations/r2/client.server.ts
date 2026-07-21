@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -67,6 +68,15 @@ export async function getUploadUrl(
     Bucket: CLOUDFLARE_BUCKET_NAME!,
     Key: key,
     ContentType: contentType,
+  });
+  return getSignedUrl(getS3Client(), command, { expiresIn: 300 });
+}
+
+export async function getDownloadUrl(key: string): Promise<string> {
+  requireEnv();
+  const command = new GetObjectCommand({
+    Bucket: CLOUDFLARE_BUCKET_NAME!,
+    Key: key,
   });
   return getSignedUrl(getS3Client(), command, { expiresIn: 300 });
 }
