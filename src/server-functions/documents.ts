@@ -77,6 +77,19 @@ export const confirmUploadFn = createServerFn({ method: "POST" })
 
     const userId = await requireUserId();
     const documents = await getApplicationDocumentsCollection();
+
+    // Validate that the key belongs to this user's prefix
+    const expectedPrefix = `grandhostwelcome/${userId}/`;
+    if (!data.key.startsWith(expectedPrefix)) {
+      throw new Error("Invalid upload key.");
+    }
+
+    // Re-check document cap before inserting
+    const count = await documents.countDocuments({ userId });
+    if (count >= MAX_DOCUMENTS) {
+      throw new Error("You can upload a maximum of 10 documents.");
+    }
+
     await documents.insertOne({
       _id: new ObjectId(),
       userId,
