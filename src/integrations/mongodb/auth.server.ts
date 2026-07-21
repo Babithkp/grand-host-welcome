@@ -60,3 +60,10 @@ export async function requireUserId(): Promise<ObjectId> {
   if (!user) throw new Error("Not authenticated.");
   return user._id;
 }
+
+export async function requireAdmin(): Promise<UserDoc> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated.");
+  if (user.role !== "admin") throw new Error("Not authorized.");
+  return user;
+}
