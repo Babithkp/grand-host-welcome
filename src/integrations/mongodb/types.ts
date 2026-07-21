@@ -28,6 +28,7 @@ export interface ApplicationDoc {
   position: string | null;
   submitted: boolean;
   submitted_at: Date | null;
+  status: "pending" | "approved" | "rejected" | null;
   created_at: Date;
   updated_at: Date;
 }

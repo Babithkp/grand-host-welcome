@@ -24,6 +24,7 @@ export const getApplicationFn = createServerFn({ method: "GET" }).handler(
       country: app.country,
       position: app.position,
       submitted: app.submitted,
+      status: app.status ?? null,
     };
   },
 );
@@ -75,7 +76,9 @@ export const saveApplicationFn = createServerFn({ method: "POST" })
           country: data.country,
           position: data.position,
           updated_at: now,
-          ...(data.submit ? { submitted: true, submitted_at: now } : {}),
+          ...(data.submit
+            ? { submitted: true, submitted_at: now, status: "pending" as const }
+            : {}),
         },
         $setOnInsert: {
           created_at: now,
