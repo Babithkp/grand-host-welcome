@@ -18,7 +18,10 @@ export const getAdminDashboardFn = createServerFn({ method: "GET" }).handler(
     const documents = await getApplicationDocumentsCollection();
 
     const [allUsers, allApplications, allDocuments] = await Promise.all([
-      users.find({}).sort({ createdAt: -1 }).toArray(),
+      users
+        .find({ role: { $ne: "admin" } })
+        .sort({ createdAt: -1 })
+        .toArray(),
       applications.find({}).toArray(),
       documents.find({}).sort({ created_at: -1 }).toArray(),
     ]);

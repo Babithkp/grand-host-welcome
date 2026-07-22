@@ -144,11 +144,18 @@ function AdminPage() {
               {rows.map((row) => (
                 <div key={row.userId} className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-border">
                   <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-forest-deep">{row.username}</p>
-                      <p className="text-sm text-muted-foreground">{row.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Signed up {new Date(row.signedUpAt).toLocaleDateString()}
+                    <div className="grid gap-1 text-sm">
+                      <p>
+                        <span className="font-medium text-forest-deep">Username: </span>
+                        {row.username}
+                      </p>
+                      <p>
+                        <span className="font-medium text-forest-deep">Email: </span>
+                        {row.email}
+                      </p>
+                      <p>
+                        <span className="font-medium text-forest-deep">Date: </span>
+                        {new Date(row.signedUpAt).toLocaleDateString()}
                       </p>
                     </div>
                     <span
