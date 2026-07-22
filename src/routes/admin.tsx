@@ -46,6 +46,7 @@ function AdminPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const totalDocuments = rows.reduce((sum, row) => sum + row.documents.length, 0);
 
   useEffect(() => {
     (async () => {
@@ -137,14 +138,29 @@ function AdminPage() {
 
         {status === "ready" && rows.length > 0 && (
           <>
+            <div className="mb-6 grid grid-cols-2 gap-4 sm:max-w-sm">
+              <div className="rounded-2xl bg-white p-4 text-center shadow-sm ring-1 ring-border">
+                <p className="text-2xl font-semibold text-forest-deep">{rows.length}</p>
+                <p className="text-xs text-muted-foreground">Users</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 text-center shadow-sm ring-1 ring-border">
+                <p className="text-2xl font-semibold text-forest-deep">{totalDocuments}</p>
+                <p className="text-xs text-muted-foreground">Files</p>
+              </div>
+            </div>
+
             {actionErr && (
               <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionErr}</p>
             )}
             <div className="space-y-4">
-              {rows.map((row) => (
+              {rows.map((row, index) => (
                 <div key={row.userId} className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-border">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="grid gap-1 text-sm">
+                      <p>
+                        <span className="font-medium text-forest-deep">#: </span>
+                        {index + 1}
+                      </p>
                       <p>
                         <span className="font-medium text-forest-deep">Username: </span>
                         {row.username}
